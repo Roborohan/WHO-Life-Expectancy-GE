@@ -284,8 +284,9 @@ st.markdown(f"""<div class="body-text">
 The single worst case is {w.Country} in {int(w.Year)}. Actual life expectancy was
 {w.Actual:.1f} years. The advanced model said {w.Advanced:.1f}. The minimal model said
 {w.Minimal:.1f}, over by {w.Minimal - w.Actual:.0f} years, because on paper
-{w.Country} looks like an ordinary middle income country. What the minimal model
-cannot see is the HIV epidemic, and that is the entire difference.
+{w.Country} looks better off than its neighbours, with roughly three times the regional
+median GDP per capita. What the minimal model cannot see is HIV incidence fourteen
+times the regional median, and that is the entire difference.
 </div>""", unsafe_allow_html=True)
 
 

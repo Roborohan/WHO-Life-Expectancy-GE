@@ -173,8 +173,8 @@ judgement call.
 </div></div>
 <div class="decision">
 <div class="what">Dropped Infant_deaths, kept Under_five_deaths</div>
-<div class="why">Correlated at 0.986. Under-five is the wider measure and overlaps
-slightly less with adult mortality.
+<div class="why">Correlated at 0.986. Under-five is the wider measure and keeping 
+both does next to nothing.
 </div></div>
 <div class="decision">
 <div class="what">Averaged the four vaccines into Vaccination_coverage</div>
