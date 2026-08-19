@@ -48,7 +48,7 @@ with c1:
                                      max_value=1000000.0, value=9000.0, step=100.0,
                                      format='%.0f')
 with c2:
-    year = st.number_input('Year', min_value=2000, max_value=2015, value=2015, step=1)
+    year = st.number_input('Year of Measurement', min_value=2000, max_value=2026, value=2015, step=1)
     population_mln = st.number_input('Population, millions', min_value=0.01,
                                      max_value=10000.0, value=45.0, step=0.5,
                                      format='%.2f')
