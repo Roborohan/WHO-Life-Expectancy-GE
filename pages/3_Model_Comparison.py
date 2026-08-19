@@ -5,8 +5,10 @@ import streamlit as st
 from plotly.subplots import make_subplots
 
 import style
-from who_model import (df, X_cols, X_test_s, MINIMAL, model_comparison,
-                       pte_full, pte_min, y_test)
+from sklearn import metrics
+
+from who_model import (df, X_cols, X_test_s, X_train_s, MINIMAL, model_comparison,
+                       pte_full, pte_min, res_full, res_min, y_test, y_train)
 
 st.set_page_config(page_title='Model Comparison', layout='centered')
 
@@ -86,6 +88,72 @@ def quartile_table():
     g[['Advanced', 'Minimal']] = g[['Advanced', 'Minimal']].round(2)
     g.index.name = 'Life expectancy band'
     return g.reset_index()
+
+
+@st.cache_data
+def baseline_table():
+    mean_pred = np.full(len(y_test), y_train.mean())
+    region_means = df.loc[X_train_s.index].groupby('Region').Life_expectancy.mean()
+    region_pred = df.loc[X_test_s.index, 'Region'].map(region_means).values
+    rows = [
+        ['Always predict the overall average',
+         metrics.root_mean_squared_error(y_test, mean_pred)],
+        ['Always predict the regional average',
+         metrics.root_mean_squared_error(y_test, region_pred)],
+        ['Minimal model', min_rmse],
+        ['Benchmark set in the brief', 1.8],
+        ['Advanced model', adv_rmse],
+    ]
+    out = pd.DataFrame(rows, columns=['Approach', 'RMSE'])
+    out['RMSE'] = out['RMSE'].round(2)
+    return out.sort_values('RMSE', ascending=False).reset_index(drop=True)
+
+
+@st.cache_data
+def coefficient_table():
+    frames = []
+    for name, res, feats in [('Advanced', res_full, X_cols), ('Minimal', res_min, MINIMAL)]:
+        p = res.params.drop('const').reindex(feats)
+        top = p.reindex(p.abs().sort_values(ascending=False).index).head(5)
+        frames.append(pd.DataFrame({
+            'Model': name,
+            'Feature': top.index,
+            'Coefficient': top.values.round(2),
+        }))
+    return pd.concat(frames, ignore_index=True)
+
+
+@st.cache_data
+def region_share():
+    out = {}
+    for name, res, feats in [('Advanced', res_full, X_cols), ('Minimal', res_min, MINIMAL)]:
+        p = res.params.drop('const').reindex(feats).abs()
+        regions = [f for f in feats if f.startswith('Region_')]
+        out[name] = p[regions].sum() / p.sum() * 100
+    return out
+
+
+def region_share_chart():
+    share = region_share()
+    fig = go.Figure()
+    for i, (name, colour) in enumerate([('Advanced', ADV), ('Minimal', MIN)]):
+        fig.add_trace(go.Bar(
+            y=[name], x=[share[name]], orientation='h', marker_color=colour,
+            name=name, showlegend=False, text=[f'{share[name]:.0f}%'],
+            textposition='outside', textfont=dict(size=13),
+            hovertemplate='%{x:.0f}% of coefficient weight<extra>' + name + '</extra>',
+        ))
+    fig.update_layout(
+        height=170, margin=dict(l=10, r=40, t=10, b=40),
+        paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+        font=dict(family='IBM Plex Sans, sans-serif', size=12, color=AXIS),
+        bargap=0.4,
+    )
+    fig.update_xaxes(title_text='Share of total coefficient weight from region dummies',
+                     title_font_size=11, range=[0, 100], showgrid=True,
+                     gridcolor='rgba(128,150,162,0.18)', zeroline=False, ticksuffix='%')
+    fig.update_yaxes(showgrid=False)
+    return fig
 
 
 def actual_vs_predicted():
@@ -221,7 +289,54 @@ cannot see is the HIV epidemic, and that is the entire difference.
 </div>""", unsafe_allow_html=True)
 
 
-st.markdown('<div class="sect">4 &middot; Summary</div>', unsafe_allow_html=True)
+st.markdown('<div class="sect">4 &middot; What each model leans on</div>',
+            unsafe_allow_html=True)
+
+st.markdown("""<div class="body-text">
+Both models are standardised, so their coefficients are in the same units and can be
+compared directly. These are the five largest in each.
+</div>""", unsafe_allow_html=True)
+
+st.table(coefficient_table())
+
+share = region_share()
+
+st.markdown(f"""<div class="body-text">
+The advanced model is built on mortality. The minimal model has no mortality to look
+at, so it falls back on wealth and on region. Adding up the coefficient weight sitting
+in the region dummies makes the difference plain.
+</div>""", unsafe_allow_html=True)
+
+st.plotly_chart(region_share_chart(), width='stretch')
+
+st.markdown(f"""<div class="body-text">
+{share['Minimal']:.0f}% of the minimal model's coefficient weight is in the region
+dummies, against {share['Advanced']:.0f}% for the advanced model. Take away the health
+data and the model compensates by leaning on which continent a country sits in. It
+still predicts reasonably well, but it is doing so from geography rather than from
+anything about the population.
+</div>""", unsafe_allow_html=True)
+
+
+st.markdown('<div class="sect">5 &middot; Compared to doing nothing</div>',
+            unsafe_allow_html=True)
+
+st.markdown("""<div class="body-text">
+RMSE only means something next to an alternative. These are the simplest approaches
+that need no model at all.
+</div>""", unsafe_allow_html=True)
+
+st.table(baseline_table())
+
+st.markdown("""<div class="body-text">
+The advanced model comfortably clears the benchmark. The minimal model does not, and
+it only improves on looking up a regional average by about 1.4 years, which fits what
+the coefficients showed: without health data the model is not doing much more than
+sorting countries by continent and wealth.
+</div>""", unsafe_allow_html=True)
+
+
+st.markdown('<div class="sect">6 &middot; Summary</div>', unsafe_allow_html=True)
 
 st.markdown(f"""<div class="body-text">
 Consent buys about {min_rmse - adv_rmse:.1f} years of accuracy on average, and far
