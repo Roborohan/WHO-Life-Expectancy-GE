@@ -4,10 +4,14 @@ import plotly.graph_objects as go
 import statsmodels.api as sm
 import streamlit as st
 from plotly.subplots import make_subplots
+from sklearn import metrics
+from sklearn.linear_model import LinearRegression
+from sklearn.preprocessing import MinMaxScaler, RobustScaler, StandardScaler
 from statsmodels.stats.outliers_influence import variance_inflation_factor
 
 import style
-from who_model import df, X_cols, X_train_s, MINIMAL, model_comparison
+from who_model import (df, X_cols, X_train, X_test, X_train_s, y_train, y_test,
+                       MINIMAL, model_comparison)
 
 st.set_page_config(page_title='Feature Choices', layout='centered')
 
@@ -54,11 +58,34 @@ def correlation_pairs():
 
 
 @st.cache_data
+def scaler_comparison():
+    options = {'None': None, 'StandardScaler': StandardScaler(),
+               'MinMaxScaler': MinMaxScaler(), 'RobustScaler': RobustScaler()}
+    rows = []
+    for name, sc in options.items():
+        Xtr, Xte = X_train.copy().astype(float), X_test.copy().astype(float)
+        if sc is not None:
+            Xtr[X_cols] = sc.fit_transform(Xtr[X_cols])
+            Xte[X_cols] = sc.transform(Xte[X_cols])
+        pred = LinearRegression().fit(Xtr, y_train).predict(Xte)
+        cond = sm.OLS(y_train, sm.add_constant(Xtr, has_constant='add')).fit().condition_number
+        rows.append({
+            'Scaler': name,
+            'RMSE': round(metrics.root_mean_squared_error(y_test, pred), 4),
+            'MAE': round(metrics.mean_absolute_error(y_test, pred), 4),
+            'R2': round(metrics.r2_score(y_test, pred), 4),
+            'Condition number': f'{cond:,.0f}',
+        })
+    return pd.DataFrame(rows)
+
+
+@st.cache_data
 def vif_table():
     Xv = sm.add_constant(X_train_s[X_cols].astype(float), has_constant='add')
     v = pd.Series([variance_inflation_factor(Xv.values, i) for i in range(Xv.shape[1])],
                   index=Xv.columns).drop('const')
-    return v.sort_values(ascending=False).round(2).rename('VIF').to_frame()
+    v = v.sort_values(ascending=False).round(2)
+    return pd.DataFrame({'Feature': v.index, 'VIF': v.values})
 
 
 def transform_plot(col, label):
@@ -133,7 +160,7 @@ Some columns measure almost the same thing. Left alone they make the coefficient
 unstable, and in one case the model will not solve at all.
 </div>""", unsafe_allow_html=True)
 
-st.dataframe(correlation_pairs(), hide_index=True, width='stretch')
+st.table(correlation_pairs())
 
 st.markdown("""<div class="decision">
 <div class="what">Dropped Economy_status_Developing</div>
@@ -212,12 +239,27 @@ stopped dropping columns. A separate test removing each feature one at a time ag
 none of them improved the model by leaving.
 </div>""", unsafe_allow_html=True)
 
-st.dataframe(vif_table(), width='stretch', height=300)
+st.table(vif_table())
 
 st.markdown("""<div class="body-text">
-The unscaled model reported a condition number near 936,000, which usually signals
-collinearity. Here it was just the mismatched units. Scaling dropped it below 10 and
-left every error metric identical.
+The unscaled model reported a condition number in the hundreds of thousands, which
+usually signals collinearity. Here it was only the mismatched units: Year sits near
+2,000 while BMI sits near 25. We tried three scalers to find out which.
+</div>""", unsafe_allow_html=True)
+
+st.table(scaler_comparison())
+
+st.markdown("""<div class="decision">
+<div class="what">We chose StandardScaler</div>
+<div class="why">Every scaler gives identical predictions, so this was never about
+accuracy. It is about the condition number, and StandardScaler brings it lowest by
+some way. It also puts every feature in standard deviations, which makes the
+coefficients directly comparable to each other.
+</div></div>
+<div class="body-text">
+The identical error columns are the useful part. They confirm the huge condition
+number was an arithmetic artefact rather than a broken model, and that scaling fixed
+the diagnostic without changing a single prediction.
 </div>""", unsafe_allow_html=True)
 
 
@@ -247,19 +289,35 @@ high, so it fails hardest where accuracy matters most.
 </div>""", unsafe_allow_html=True)
 
 
-st.markdown('<div class="sect">6 &middot; Reading the coefficients</div>',
-            unsafe_allow_html=True)
+st.markdown('<div class="sect">6 &middot; Summary</div>', unsafe_allow_html=True)
 
-st.markdown("""<div class="body-text">
-Life expectancy is calculated from mortality rates in the first place. Adult mortality
-and under-five deaths are not really predictors then, and the model is partly redoing
-that arithmetic. It explains why they dominate and why the advanced model scores so
-well.
+summary = pd.DataFrame([
+    ['Cleaning', 'Nothing removed', 'No missing values, duplicates or impossible values'],
+    ['Outliers', 'All 2,864 rows kept', 'IQR rule would delete 47%, mostly poorest regions'],
+    ['Economy_status_Developing', 'Dropped', 'Exact mirror of Developed, r = -1.000'],
+    ['Infant_deaths', 'Dropped', 'r = 0.986 with Under_five_deaths'],
+    ['Four vaccine columns', 'Averaged into one', 'Same measure, correlated up to 0.953'],
+    ['Two thinness columns', 'Averaged into one', 'Overlapping age bands, r = 0.939'],
+    ['GDP_per_capita', 'Logged', 'Curved relationship, r improves 0.58 to 0.80'],
+    ['Incidents_HIV', 'Logged', 'Skew of 4.98'],
+    ['Population_mln, BMI', 'Left raw', 'No skew or no benefit'],
+    ['Region', 'One-hot encoded', 'No natural order, Africa as baseline'],
+    ['Country', 'Excluded', 'Would memorise, not generalise'],
+], columns=['Feature', 'Decision', 'Reason'])
+
+st.table(summary)
+
+st.markdown(f"""<div class="body-text" style="margin-top:1rem;">
+21 raw columns became {len(adv)} model features. Every remaining feature earns its
+place: none has a VIF above 10, and removing any one of them makes the model worse.
+The advanced model predicts life expectancy to within
+&plusmn;{rmse.iloc[0]:.2f} years, comfortably past the 1.8 benchmark. Withholding
+health data costs {rmse.iloc[1] / rmse.iloc[0]:.1f} times the error.
 </div>
 <div class="body-text">
-It also means some coefficients point the opposite way to the plain correlation. BMI
-tracks longer life on its own, because well-fed countries are wealthy ones. Once the
-model knows about wealth and mortality, what is left in BMI is obesity, and the sign
-flips. These are effects with everything else held still, not causes, and the
-calculator's inputs should not be read as advice.
+One caveat worth stating. Life expectancy is calculated from mortality rates to begin
+with, so adult mortality and under-five deaths are not ordinary predictors and the
+model is partly redoing that arithmetic. It is why they dominate, and why a few
+coefficients point the opposite way to their plain correlation. Treat the calculator
+as an estimator, not as evidence of cause.
 </div>""", unsafe_allow_html=True)

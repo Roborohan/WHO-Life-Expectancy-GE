@@ -79,6 +79,25 @@ div[role="radiogroup"] { gap: 0.4rem; }
 }
 .featlist .drop { text-decoration: line-through; opacity: 0.45; }
 .featlist .new { color: var(--who-blue); }
+.stTable table, div[data-testid="stTable"] table {
+    font-size: 0.84rem; border-collapse: collapse; width: 100%;
+}
+.stTable thead th, div[data-testid="stTable"] thead th {
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.68rem;
+    letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.7;
+    text-align: left; border-bottom: 2px solid var(--who-rule);
+    padding: 0.5rem 0.7rem; background: transparent;
+}
+.stTable tbody td, div[data-testid="stTable"] tbody td {
+    border-bottom: 1px solid var(--who-rule); padding: 0.45rem 0.7rem;
+    background: transparent;
+}
+.stTable tbody td:nth-child(n+2), div[data-testid="stTable"] tbody td:nth-child(n+2) {
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.82rem;
+}
+.stTable tbody tr:hover td, div[data-testid="stTable"] tbody tr:hover td {
+    background: rgba(128, 150, 162, 0.08);
+}
 </style>"""
 
 
