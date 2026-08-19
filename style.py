@@ -19,21 +19,21 @@ html, body, [class*="css"], .stMarkdown, label, input, select, button {
 .mast { border-bottom: 3px solid var(--who-blue); padding-bottom: 0.9rem; margin-bottom: 0.4rem; }
 .mast .eyebrow {
     font-family: 'IBM Plex Mono', monospace;
-    font-size: 0.68rem; letter-spacing: 0.18em; text-transform: uppercase;
+    font-size: 0.74rem; letter-spacing: 0.18em; text-transform: uppercase;
     color: var(--who-blue); margin-bottom: 0.5rem;
 }
 .mast h1 {
     font-size: 2.1rem; font-weight: 600; margin: 0; letter-spacing: -0.02em;
     color: inherit;
 }
-.mast .sub { font-size: 0.9rem; opacity: 0.62; margin-top: 0.35rem; }
+.mast .sub { font-size: 1rem; opacity: 0.7; margin-top: 0.45rem; }
 .sect {
     font-family: 'IBM Plex Mono', monospace;
-    font-size: 0.7rem; letter-spacing: 0.15em; text-transform: uppercase;
-    opacity: 0.62; margin: 2rem 0 0.2rem 0;
-    border-top: 1px solid var(--who-rule); padding-top: 0.9rem;
+    font-size: 0.86rem; font-weight: 500; letter-spacing: 0.13em;
+    text-transform: uppercase; opacity: 0.78; margin: 2.2rem 0 0.3rem 0;
+    border-top: 1px solid var(--who-rule); padding-top: 0.95rem;
 }
-.sect-note { font-size: 0.82rem; opacity: 0.62; margin-bottom: 0.6rem; }
+.sect-note { font-size: 0.86rem; opacity: 0.65; margin-bottom: 0.7rem; }
 .consent-q {
     font-size: 1.02rem; font-weight: 500; line-height: 1.5;
     margin: 1.4rem 0 0.7rem 0;
@@ -50,8 +50,9 @@ div[role="radiogroup"] { gap: 0.4rem; }
 }
 .readout { margin-top: 2.2rem; border-top: 1px solid var(--who-rule); padding-top: 1.6rem; }
 .readout .cap {
-    font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem;
-    letter-spacing: 0.15em; text-transform: uppercase; opacity: 0.62;
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.86rem;
+    font-weight: 500; letter-spacing: 0.13em; text-transform: uppercase;
+    opacity: 0.78;
 }
 .readout .figure { display: flex; align-items: baseline; gap: 0.6rem; margin: 0.5rem 0 0.1rem 0; }
 .readout .value {
@@ -98,6 +99,13 @@ div[role="radiogroup"] { gap: 0.4rem; }
 .stTable tbody tr:hover td, div[data-testid="stTable"] tbody tr:hover td {
     background: rgba(128, 150, 162, 0.08);
 }
+div[data-testid="stPageLink"] a {
+    border: 1px solid var(--who-rule); border-left: 3px solid var(--who-blue);
+    border-radius: 0; padding: 0.7rem 1rem; width: 100%;
+    transition: background 0.15s ease;
+}
+div[data-testid="stPageLink"] a:hover { background: rgba(128, 150, 162, 0.1); }
+div[data-testid="stPageLink"] a p { font-size: 0.9rem !important; font-weight: 500; }
 </style>"""
 
 

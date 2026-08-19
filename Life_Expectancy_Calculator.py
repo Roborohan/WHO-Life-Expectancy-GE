@@ -199,3 +199,8 @@ Shaded band shows typical model error. Withholding health statistics widens it
 from &plusmn;{adv_rmse:.2f} to &plusmn;{min_rmse:.2f} years.
 </div>
 </div>""", unsafe_allow_html=True)
+
+st.markdown('<div style="margin-top:1.6rem;"></div>', unsafe_allow_html=True)
+
+st.page_link('pages/2_Feature_Choices.py',
+             label='How these features were chosen', icon=':material/arrow_forward:')
