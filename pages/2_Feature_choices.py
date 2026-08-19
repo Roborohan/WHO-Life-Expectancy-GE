@@ -7,7 +7,7 @@ from statsmodels.stats.outliers_influence import variance_inflation_factor
 import style
 from who_model import df, X_cols, X_train_s, MINIMAL, res_full, model_comparison
 
-st.set_page_config(page_title='Feature choices', layout='centered')
+st.set_page_config(page_title='Feature Choices', layout='centered')
 
 style.apply()
 

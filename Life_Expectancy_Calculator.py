@@ -12,7 +12,7 @@ from who_model import (
     model_comparison,
 )
 
-st.set_page_config(page_title='Life Expectancy Predictor', layout='centered')
+st.set_page_config(page_title='Life Expectancy Calculator', layout='centered')
 
 style.apply()
 
