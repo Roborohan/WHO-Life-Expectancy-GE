@@ -302,9 +302,10 @@ st.markdown(f"""<div class="body-text" style="margin-top:1.2rem;">
 
 st.markdown(f"""<div class="body-text" style="margin-top:1.2rem;">
 Losing them takes typical error from &plusmn;{rmse.iloc[0]:.2f} to
-&plusmn;{rmse.iloc[1]:.2f} years. The gap is also uneven. The minimal model is
-about three times worse for countries with low life expectancy than for those with
-high, so it fails hardest where accuracy matters most.
+&plusmn;{rmse.iloc[1]:.2f} years. The gap is also uneven. For the quarter of countries
+with the lowest life expectancy the minimal model is over four times worse than the
+advanced one, against under two and a half times for the highest quarter, so it fails
+hardest where accuracy matters most.
 </div>""", unsafe_allow_html=True)
 
 
