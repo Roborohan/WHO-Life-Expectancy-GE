@@ -88,6 +88,9 @@ def vif_table():
     return pd.DataFrame({'Feature': v.index, 'VIF': v.values})
 
 
+VIF_CUTOFF = 3.0
+
+
 def transform_plot(col, label):
     panels = [(df[col], label, False), (np.log1p(df[col]), f'log({label})', True)]
     titles = [f'{name} &nbsp;&nbsp; r = {vals.corr(df.Life_expectancy):.2f}'
@@ -226,8 +229,14 @@ st.markdown("""<div class="decision">
 <div class="what">Region, one-hot encoded</div>
 <div class="why">Regions have no order, so numbering them 0 to 8 would invent one. We
 drop one dummy, making Africa the baseline every other region is compared against.
-Country is left out entirely: 179 dummies would just memorise each country's average,
-and the calculator has to work for countries the model has never seen.
+</div></div>
+<div class="decision">
+<div class="what">Country, excluded</div>
+<div class="why">With 179 of them, the dummies would memorise each country's average
+rather than learn anything general, and any country outside the training set could not
+be scored at all. The calculator asks for population statistics instead, which is what
+the brief specifies. Country stays in the dataframe as a label, so predictions can
+still be traced back to the country they belong to.
 </div></div>""", unsafe_allow_html=True)
 
 
@@ -239,7 +248,15 @@ stopped dropping columns. A separate test removing each feature one at a time ag
 none of them improved the model by leaving.
 </div>""", unsafe_allow_html=True)
 
-st.table(vif_table())
+vif_all = vif_table()
+vif_shown = vif_all[vif_all.VIF >= VIF_CUTOFF]
+vif_hidden = len(vif_all) - len(vif_shown)
+
+st.table(vif_shown)
+
+st.markdown(f"""<div class="sect-note">
+The remaining {vif_hidden} features all score below {VIF_CUTOFF:.0f} and are omitted here.
+</div>""", unsafe_allow_html=True)
 
 st.markdown("""<div class="body-text">
 The unscaled model reported a condition number in the hundreds of thousands, which
@@ -321,6 +338,3 @@ model is partly redoing that arithmetic. It is why they dominate, and why a few
 coefficients point the opposite way to their plain correlation. Treat the calculator
 as an estimator, not as evidence of cause.
 </div>""", unsafe_allow_html=True)
-
-st.page_link('pages/3_Model_Comparison.py',
-             label='A Comparison of our Two Models', icon=':material/arrow_forward:')
