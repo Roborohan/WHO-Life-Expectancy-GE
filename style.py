@@ -14,7 +14,8 @@ CSS = """
 html, body, [class*="css"], .stMarkdown, label, input, select, button {
     font-family: 'IBM Plex Sans', -apple-system, sans-serif;
 }
-.block-container { padding-top: 3rem; max-width: 780px; }
+.block-container { padding-top: 3rem; max-width: 940px; padding-left: 2rem; padding-right: 2rem; }
+.lede, .body-text, .decision { max-width: 680px; }
 .mast { border-bottom: 3px solid var(--who-blue); padding-bottom: 0.9rem; margin-bottom: 0.4rem; }
 .mast .eyebrow {
     font-family: 'IBM Plex Mono', monospace;
