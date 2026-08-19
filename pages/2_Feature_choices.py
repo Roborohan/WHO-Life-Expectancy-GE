@@ -260,8 +260,10 @@ The remaining {vif_hidden} features all score below {VIF_CUTOFF:.0f} and are omi
 
 st.markdown("""<div class="body-text">
 The unscaled model reported a condition number in the hundreds of thousands, which
-usually signals collinearity. Here it was only the mismatched units: Year sits near
-2,000 while BMI sits near 25. We tried three scalers to find out which.
+usually signals collinearity. Here it was only that the columns are on wildly different
+scales. Year runs around 2,000 while BMI runs around 25, so one column's numbers are
+roughly eighty times bigger than another's. Scaling puts every column in the same range
+and the problem disappears. We tried three scalers to find out which.
 </div>""", unsafe_allow_html=True)
 
 st.table(scaler_comparison())
