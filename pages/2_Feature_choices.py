@@ -1,36 +1,50 @@
 import numpy as np
 import pandas as pd
+import plotly.graph_objects as go
 import statsmodels.api as sm
 import streamlit as st
+from plotly.subplots import make_subplots
 from statsmodels.stats.outliers_influence import variance_inflation_factor
 
 import style
-from who_model import df, X_cols, X_train_s, MINIMAL, res_full, model_comparison
+from who_model import df, X_cols, X_train_s, MINIMAL, model_comparison
 
 st.set_page_config(page_title='Feature Choices', layout='centered')
 
 style.apply()
 
+AXIS = '#8096a2'
+TREND = '#e4572e'
+REGION_COLOURS = {
+    'Africa': '#d9a441',
+    'Asia': '#3f8ea7',
+    'Central America and Caribbean': '#8d6cab',
+    'European Union': '#2f6f9f',
+    'Middle East': '#c96a4f',
+    'North America': '#4c9f70',
+    'Oceania': '#b5606f',
+    'Rest of Europe': '#6fa8c7',
+    'South America': '#9c8b3d',
+}
+
 st.markdown("""<div class="mast">
 <div class="eyebrow">Global Health Observatory &middot; Method</div>
-<h1>Feature choices</h1>
-<div class="sub">What was kept, what was combined, what was dropped &mdash; and why</div>
+<h1>Feature Choices</h1>
+<div class="sub">What we kept, combined and dropped</div>
 </div>""", unsafe_allow_html=True)
 
 st.markdown("""<div class="lede">
-The raw dataset holds 21 columns for 179 countries across 2000&ndash;2015. Two models
-are built from it: an advanced model using every available statistic, and a minimal
-model with all health data withheld. Each transformation below was tested against
-the data rather than assumed.
+The raw file has 21 columns for 179 countries, 2000 to 2015. We tested each decision
+below against the data rather than assuming it.
 </div>""", unsafe_allow_html=True)
 
 
 @st.cache_data
-def top_correlations(threshold=0.75):
+def correlation_pairs():
     c = df.corr(numeric_only=True)
     mask = np.triu(np.ones(c.shape), k=1).astype(bool)
     pairs = c.where(mask).stack()
-    pairs = pairs[pairs.abs() > threshold].sort_values(key=abs, ascending=False)
+    pairs = pairs[pairs.abs() > 0.75].sort_values(key=abs, ascending=False)
     out = pd.DataFrame({
         'Feature A': [a for a, b in pairs.index],
         'Feature B': [b for a, b in pairs.index],
@@ -47,179 +61,205 @@ def vif_table():
     return v.sort_values(ascending=False).round(2).rename('VIF').to_frame()
 
 
-@st.cache_data
-def skew_table():
-    cols = ['GDP_per_capita', 'Incidents_HIV', 'Population_mln', 'BMI', 'Schooling']
-    rows = []
-    for c in cols:
-        rows.append({
-            'Feature': c,
-            'Skew (raw)': round(df[c].skew(), 2),
-            'Skew (logged)': round(np.log1p(df[c]).skew(), 2),
-            'r with target (raw)': round(df[c].corr(df.Life_expectancy), 3),
-            'r with target (logged)': round(np.log1p(df[c]).corr(df.Life_expectancy), 3),
-        })
-    return pd.DataFrame(rows)
+def transform_plot(col, label):
+    panels = [(df[col], label, False), (np.log1p(df[col]), f'log({label})', True)]
+    titles = [f'{name} &nbsp;&nbsp; r = {vals.corr(df.Life_expectancy):.2f}'
+              for vals, name, _ in panels]
+
+    fig = make_subplots(rows=1, cols=2, subplot_titles=titles, horizontal_spacing=0.09)
+
+    for i, (vals, name, logged) in enumerate(panels, start=1):
+        for region, colour in REGION_COLOURS.items():
+            sub = df['Region'] == region
+            fig.add_trace(go.Scattergl(
+                x=vals[sub], y=df.loc[sub, 'Life_expectancy'],
+                mode='markers', name=region, legendgroup=region,
+                showlegend=(i == 1),
+                marker=dict(color=colour, size=5, opacity=0.62,
+                            line=dict(width=0)),
+                customdata=np.stack([df.loc[sub, 'Country'],
+                                     df.loc[sub, 'Year']], axis=-1),
+                hovertemplate='<b>%{customdata[0]}</b> %{customdata[1]}'
+                              '<br>' + name + ': %{x:.2f}'
+                              '<br>Life expectancy: %{y:.1f}<extra></extra>',
+            ), row=1, col=i)
+
+        slope, intercept = np.polyfit(vals, df['Life_expectancy'], 1)
+        xs = np.linspace(vals.min(), vals.max(), 60)
+        fig.add_trace(go.Scatter(
+            x=xs, y=slope * xs + intercept, mode='lines',
+            line=dict(color=TREND, width=2.5), showlegend=False,
+            hoverinfo='skip',
+        ), row=1, col=i)
+
+    fig.update_layout(
+        height=420, margin=dict(l=10, r=10, t=64, b=90),
+        paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+        font=dict(family='IBM Plex Sans, sans-serif', size=12, color=AXIS),
+        legend=dict(orientation='h', yanchor='top', y=-0.16, x=0,
+                    font=dict(size=10.5), itemsizing='constant',
+                    title_text=''),
+        hoverlabel=dict(font_family='IBM Plex Sans, sans-serif'),
+    )
+    fig.update_xaxes(showgrid=True, gridcolor='rgba(128,150,162,0.18)',
+                     zeroline=False, linecolor='rgba(128,150,162,0.4)')
+    fig.update_yaxes(showgrid=True, gridcolor='rgba(128,150,162,0.18)',
+                     zeroline=False, linecolor='rgba(128,150,162,0.4)')
+    fig.update_yaxes(title_text='Life expectancy', title_font_size=11, row=1, col=1)
+    for ann in fig.layout.annotations:
+        ann.font.size = 12
+    return fig
 
 
 st.markdown('<div class="sect">1 &middot; Data quality</div>', unsafe_allow_html=True)
 
 st.markdown("""<div class="body-text">
-No cleaning was required. The file contains no missing values, no duplicate rows and
-no duplicate country&ndash;year pairs. Every country has all sixteen years, so the
-panel is balanced. Range checks confirmed no impossible values: immunisation and
-thinness percentages stay within bounds, mortality and GDP are never negative, and
-infant deaths never exceed under-five deaths.
+Nothing needed cleaning. No missing values, no duplicate rows, and every country has
+all sixteen years. Range checks found no impossible values either.
 </div>""", unsafe_allow_html=True)
 
 st.markdown("""<div class="decision">
-<div class="what">Outliers were retained, not removed</div>
-<div class="why">An interquartile-range rule would have deleted 47% of the data,
-and the rows it flags are concentrated in the poorest regions. The extreme values
-trace to real events rather than recording errors. Removing them would improve the
-error metric while producing a model that only works on unremarkable countries.
+<div class="what">We kept the outliers</div>
+<div class="why">An IQR rule would delete 47% of the data, mostly from the poorest
+regions. Those extreme values are real events, not recording errors. Dropping them
+lowers the error score but gives you a model that only works on average countries.
 </div></div>""", unsafe_allow_html=True)
 
 
-st.markdown('<div class="sect">2 &middot; Redundant columns</div>', unsafe_allow_html=True)
+st.markdown('<div class="sect">2 &middot; Overlapping columns</div>', unsafe_allow_html=True)
 
 st.markdown("""<div class="body-text">
-Several columns measure nearly the same thing. Left in place they inflate standard
-errors and, in one case, make the design matrix singular.
+Some columns measure almost the same thing. Left alone they make the coefficients
+unstable, and in one case the model will not solve at all.
 </div>""", unsafe_allow_html=True)
 
-st.dataframe(top_correlations(), hide_index=True, width='stretch')
+st.dataframe(correlation_pairs(), hide_index=True, width='stretch')
 
 st.markdown("""<div class="decision">
-<div class="what">Economy_status_Developing dropped</div>
-<div class="why">A perfect mirror of Economy_status_Developed at r = &minus;1.000.
-The two always sum to one, which is collinear with the intercept and makes the model
-unsolvable. This is a duplicate column rather than a modelling choice.
+<div class="what">Dropped Economy_status_Developing</div>
+<div class="why">It is Economy_status_Developed inverted, r = &minus;1.000. The two
+always sum to one, which breaks the model. This is a duplicate column, not a
+judgement call.
 </div></div>
 <div class="decision">
-<div class="what">Infant_deaths dropped, Under_five_deaths kept</div>
-<div class="why">Correlated at 0.986. Under-five deaths is the broader measure and
-overlaps slightly less with adult mortality.
+<div class="what">Dropped Infant_deaths, kept Under_five_deaths</div>
+<div class="why">Correlated at 0.986. Under-five is the wider measure and overlaps
+slightly less with adult mortality.
 </div></div>
 <div class="decision">
-<div class="what">Four immunisation columns averaged into Vaccination_coverage</div>
-<div class="why">Hepatitis B, polio, diphtheria and measles are all percentage
-coverage among one-year-olds, delivered through the same programmes, and move
-together. Averaging keeps the signal without four near-identical columns.
+<div class="what">Averaged the four vaccines into Vaccination_coverage</div>
+<div class="why">Hepatitis B, polio, diphtheria and measles are all coverage
+percentages for one-year-olds, so they rise and fall together.
 </div></div>
 <div class="decision">
-<div class="what">Two thinness columns averaged into Thinness_avg</div>
-<div class="why">Overlapping age bands measuring the same prevalence, correlated
-at 0.939.
+<div class="what">Averaged the two thinness columns into Thinness_avg</div>
+<div class="why">Overlapping age bands measuring the same thing, correlated at 0.939.
 </div></div>""", unsafe_allow_html=True)
 
 
-st.markdown('<div class="sect">3 &middot; Transformations</div>', unsafe_allow_html=True)
+st.markdown('<div class="sect">3 &middot; Log transforms</div>', unsafe_allow_html=True)
 
 st.markdown("""<div class="body-text">
-Linear regression fits one slope per feature, so a curved relationship is fitted
-badly. Two columns were log-transformed; the others were tested and left alone.
+Linear regression fits one straight line per feature. If the real relationship curves,
+the line misses at both ends. Logging straightens it.
 </div>""", unsafe_allow_html=True)
 
-st.dataframe(skew_table(), hide_index=True, width='stretch')
+st.markdown("""<div class="decision">
+<div class="what">GDP per capita</div>
+<div class="why">Going from $600 to $3,000 adds years of life. Going from $60,000 to
+$63,000 adds almost nothing. The left plot bends; the right one does not.
+</div></div>""", unsafe_allow_html=True)
+
+st.plotly_chart(transform_plot('GDP_per_capita', 'GDP per capita'), width='stretch')
 
 st.markdown("""<div class="decision">
-<div class="what">GDP_per_capita logged</div>
-<div class="why">The clearest case. Moving from $600 to $3,000 per capita buys large
-gains in life expectancy; moving from $60,000 to $63,000 buys almost none. Logging
-straightens that curve and lifts the correlation with the target from 0.58 to 0.80.
+<div class="what">HIV incidence</div>
+<div class="why">Skewed at 4.98, so most countries sit squashed against the left axis.
+After logging, its coefficient is no longer significant, because adult mortality
+already accounts for HIV deaths.
+</div></div>""", unsafe_allow_html=True)
+
+st.plotly_chart(transform_plot('Incidents_HIV', 'HIV incidence'), width='stretch')
+
+st.markdown("""<div class="decision">
+<div class="what">Population, left alone</div>
+<div class="why">Logging fixes the skew but changes nothing useful. Correlation with
+life expectancy is 0.026 before and &minus;0.012 after. Population size does not
+predict life expectancy.
+</div></div>""", unsafe_allow_html=True)
+
+st.plotly_chart(transform_plot('Population_mln', 'Population'), width='stretch')
+
+st.markdown("""<div class="decision">
+<div class="what">BMI, left alone</div>
+<div class="why">Skew of &minus;0.12 is already symmetric and the values only span
+19.8 to 32.1. Logging it here would be changing a number to get a result we liked.
 </div></div>
 <div class="decision">
-<div class="what">Incidents_HIV logged</div>
-<div class="why">Skew of 4.98 on the same criterion as GDP. After the transform its
-coefficient is not significantly different from zero, because adult mortality already
-captures HIV's effect on survival &mdash; the column has little left to explain.
-</div></div>
-<div class="decision">
-<div class="what">Population_mln left raw</div>
-<div class="why">Logging fixes the skew but changes nothing predictively: the
-correlation with life expectancy is 0.026 raw and &minus;0.012 logged. Population
-size simply does not predict life expectancy once wealth and region are known.
-</div></div>
-<div class="decision">
-<div class="what">BMI left raw</div>
-<div class="why">Skew of &minus;0.12 is already symmetric, and the range spans a
-factor of 1.6 with no long tail. A log transform here would change the coefficient
-without any justification from the data.
-</div></div>
-<div class="decision">
-<div class="what">Region one-hot encoded</div>
-<div class="why">A nominal category with no ordering, so label encoding would imply
-a false ranking. One dummy is dropped to avoid collinearity with the intercept,
-making Africa the reference category that all other coefficients are measured
-against. Country itself is excluded: 179 dummies over 2,864 rows would memorise
-each country's mean rather than generalise, and the prediction function must work
-for countries outside the training data.
+<div class="what">Region, one-hot encoded</div>
+<div class="why">Regions have no order, so numbering them 0 to 8 would invent one. We
+drop one dummy, making Africa the baseline every other region is compared against.
+Country is left out entirely: 179 dummies would just memorise each country's average,
+and the calculator has to work for countries the model has never seen.
 </div></div>""", unsafe_allow_html=True)
 
 
-st.markdown('<div class="sect">4 &middot; Verification</div>', unsafe_allow_html=True)
+st.markdown('<div class="sect">4 &middot; Checking it worked</div>', unsafe_allow_html=True)
 
 st.markdown("""<div class="body-text">
-Variance inflation factors on the final feature set. Values above 10 indicate a
-feature largely predictable from the others; nothing reaches that threshold, so no
-further columns were removed. A leave-one-out test confirmed this independently:
-no feature's removal improved the model.
+Anything above 10 here would mean a feature is still redundant. Nothing is, so we
+stopped dropping columns. A separate test removing each feature one at a time agreed:
+none of them improved the model by leaving.
 </div>""", unsafe_allow_html=True)
 
 st.dataframe(vif_table(), width='stretch', height=300)
 
 st.markdown("""<div class="body-text">
-The high condition number reported by the unscaled model was traced to differing
-feature scales rather than collinearity. Standardising reduced it from roughly
-936,000 to under 10 while leaving every error metric identical to five decimal
-places, confirming the diagnosis.
+The unscaled model reported a condition number near 936,000, which usually signals
+collinearity. Here it was just the mismatched units. Scaling dropped it below 10 and
+left every error metric identical.
 </div>""", unsafe_allow_html=True)
 
 
 st.markdown('<div class="sect">5 &middot; The two feature sets</div>', unsafe_allow_html=True)
 
-adv = [c for c in X_cols]
-minimal = list(MINIMAL)
-health_only = [c for c in adv if c not in minimal]
+adv = list(X_cols)
+health_only = [c for c in adv if c not in MINIMAL]
+rmse = model_comparison.set_index('model')['rmse']
 
 st.markdown(f"""<div class="body-text">
-<strong>Advanced model &mdash; {len(adv)} columns.</strong> Every available statistic.
+<strong>Advanced model, {len(adv)} columns.</strong> Everything available.
 </div>
 <div class="featlist">{', '.join(adv)}</div>""", unsafe_allow_html=True)
 
 st.markdown(f"""<div class="body-text" style="margin-top:1.2rem;">
-<strong>Minimal model &mdash; {len(minimal)} columns.</strong> The
-{len(health_only)} health features below are withheld unless the user consents.
+<strong>Minimal model, {len(MINIMAL)} columns.</strong> These
+{len(health_only)} health features are withheld without consent.
 </div>
 <div class="featlist"><span class="drop">{', '.join(health_only)}</span></div>""",
             unsafe_allow_html=True)
 
-rmse = model_comparison.set_index('model')['rmse']
 st.markdown(f"""<div class="body-text" style="margin-top:1.2rem;">
-Withholding those {len(health_only)} features raises typical error from
-&plusmn;{rmse.iloc[0]:.2f} to &plusmn;{rmse.iloc[1]:.2f} years. That gap is the
-measurable cost of consent, and it is not evenly distributed: the minimal model's
-errors are roughly three times larger for countries with low life expectancy than
-for those with high, so the privacy-preserving model is least reliable for the
-populations most at risk.
+Losing them takes typical error from &plusmn;{rmse.iloc[0]:.2f} to
+&plusmn;{rmse.iloc[1]:.2f} years. The gap is also uneven. The minimal model is
+about three times worse for countries with low life expectancy than for those with
+high, so it fails hardest where accuracy matters most.
 </div>""", unsafe_allow_html=True)
 
 
-st.markdown('<div class="sect">6 &middot; A caution on reading coefficients</div>',
+st.markdown('<div class="sect">6 &middot; Reading the coefficients</div>',
             unsafe_allow_html=True)
 
 st.markdown("""<div class="body-text">
-Life expectancy at birth is calculated from age-specific mortality rates. Adult
-mortality and under-five deaths are therefore not ordinary predictors: the model is
-partly recovering an arithmetic identity, which is why they dominate every measure
-of importance and why the advanced model is so accurate.
+Life expectancy is calculated from mortality rates in the first place. Adult mortality
+and under-five deaths are not really predictors then, and the model is partly redoing
+that arithmetic. It explains why they dominate and why the advanced model scores so
+well.
 </div>
 <div class="body-text">
-A consequence is that several health features show a coefficient whose sign is
-opposite to their simple correlation with life expectancy. BMI correlates positively
-with life expectancy on its own, because a well-fed population is a wealthy one, but
-once wealth and mortality are accounted for the remaining signal is obesity, and the
-coefficient turns negative. These are conditional effects holding everything else
-fixed, not causal claims, and the estimator's inputs should not be read as such.
+It also means some coefficients point the opposite way to the plain correlation. BMI
+tracks longer life on its own, because well-fed countries are wealthy ones. Once the
+model knows about wealth and mortality, what is left in BMI is obesity, and the sign
+flips. These are effects with everything else held still, not causes, and the
+calculator's inputs should not be read as advice.
 </div>""", unsafe_allow_html=True)
