@@ -105,11 +105,13 @@ c1, c2, c3 = st.columns(3)
 with c1:
     region = st.selectbox('Region', VALID_REGIONS)
     gdp_per_capita = st.number_input('GDP per capita, USD', min_value=1.0,
-                                     value=9000.0, step=100.0, format='%.0f')
+                                     max_value=1000000.0, value=9000.0, step=100.0,
+                                     format='%.0f')
 with c2:
     year = st.number_input('Year', min_value=2000, max_value=2015, value=2015, step=1)
     population_mln = st.number_input('Population, millions', min_value=0.01,
-                                     value=45.0, step=0.5, format='%.2f')
+                                     max_value=10000.0, value=45.0, step=0.5,
+                                     format='%.2f')
 with c3:
     economy_status = st.selectbox('Economy status', ['Developing', 'Developed'])
     schooling = st.number_input('Schooling, years', min_value=0.0, max_value=25.0,
@@ -125,21 +127,26 @@ if use_advanced:
     h1, h2, h3 = st.columns(3)
     with h1:
         adult_mortality = st.number_input('Adult mortality, per 1,000', min_value=0.0,
-                                          value=160.0, step=1.0, format='%.1f')
+                                          max_value=1000.0, value=160.0, step=1.0,
+                                          format='%.1f')
         hepatitis_b = st.number_input('Hepatitis B coverage, %', min_value=0.0,
                                       max_value=100.0, value=90.0, step=1.0, format='%.0f')
         thinness_10_19 = st.number_input('Thinness, ages 10–19, %', min_value=0.0,
-                                         value=8.0, step=0.1, format='%.1f')
+                                         max_value=100.0, value=8.0, step=0.1,
+                                         format='%.1f')
     with h2:
         under_five_deaths = st.number_input('Under-five deaths, per 1,000', min_value=0.0,
-                                            value=25.0, step=1.0, format='%.1f')
+                                            max_value=1000.0, value=25.0, step=1.0,
+                                            format='%.1f')
         polio = st.number_input('Polio coverage, %', min_value=0.0, max_value=100.0,
                                 value=92.0, step=1.0, format='%.0f')
         thinness_5_9 = st.number_input('Thinness, ages 5–9, %', min_value=0.0,
-                                       value=8.5, step=0.1, format='%.1f')
+                                       max_value=100.0, value=8.5, step=0.1,
+                                       format='%.1f')
     with h3:
         incidents_hiv = st.number_input('HIV incidence, per 1,000', min_value=0.0,
-                                        value=0.15, step=0.01, format='%.2f')
+                                        max_value=1000.0, value=0.15, step=0.01,
+                                        format='%.2f')
         diphtheria = st.number_input('Diphtheria coverage, %', min_value=0.0,
                                      max_value=100.0, value=91.0, step=1.0, format='%.0f')
         measles = st.number_input('Measles coverage, %', min_value=0.0, max_value=100.0,
@@ -151,7 +158,37 @@ if use_advanced:
                               value=25.5, step=0.1, format='%.1f')
     with b2:
         alcohol_consumption = st.number_input('Alcohol, litres per capita', min_value=0.0,
-                                              value=4.0, step=0.1, format='%.1f')
+                                              max_value=100.0, value=4.0, step=0.1,
+                                              format='%.1f')
+
+entered = {
+    'Year': year,
+    'GDP_per_capita': gdp_per_capita,
+    'Population_mln': population_mln,
+    'Schooling': schooling,
+}
+if use_advanced:
+    entered.update({
+        'Adult_mortality': adult_mortality,
+        'Under_five_deaths': under_five_deaths,
+        'Hepatitis_B': hepatitis_b,
+        'Polio': polio,
+        'Diphtheria': diphtheria,
+        'Measles': measles,
+        'BMI': bmi,
+        'Incidents_HIV': incidents_hiv,
+        'Alcohol_consumption': alcohol_consumption,
+        'Thinness_ten_nineteen_years': thinness_10_19,
+        'Thinness_five_nine_years': thinness_5_9,
+    })
+
+outside = [name for name, val in entered.items()
+           if not FEATURE_RANGES[name][0] <= val <= FEATURE_RANGES[name][1]]
+
+if outside:
+    fields = ', '.join(n.replace('_', ' ').lower() for n in outside)
+    st.warning(f'Unusual value for {fields}. The estimate is an extrapolation '
+               f'and may be unreliable.')
 
 if use_advanced:
     prediction = predict_life_expectancy(
@@ -163,14 +200,14 @@ if use_advanced:
         gdp_per_capita=gdp_per_capita, population_mln=population_mln,
         schooling=schooling, economy_status_developed=economy_status_developed,
     )
-    basis = 'Estimated from 17 inputs including health statistics'
+    basis = 'Estimated from 20 features including health statistics'
 else:
     prediction = predict_life_expectancy_min(
         region=region, year=year, gdp_per_capita=gdp_per_capita,
         population_mln=population_mln, schooling=schooling,
         economy_status_developed=economy_status_developed,
     )
-    basis = 'Estimated from 6 non-medical inputs'
+    basis = 'Estimated from 13 non-medical features'
 
 LO, HI = 36.0, 86.0
 W, PAD = 700.0, 34.0
