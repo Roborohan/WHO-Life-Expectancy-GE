@@ -321,3 +321,6 @@ model is partly redoing that arithmetic. It is why they dominate, and why a few
 coefficients point the opposite way to their plain correlation. Treat the calculator
 as an estimator, not as evidence of cause.
 </div>""", unsafe_allow_html=True)
+
+st.page_link('pages/3_Model_Comparison.py',
+             label='A Comparison of our Two Models', icon=':material/arrow_forward:')
