@@ -1,3 +1,5 @@
+import math
+
 import streamlit as st
 
 from who_model import (
@@ -73,7 +75,6 @@ st.markdown("""<link rel="preconnect" href="https://fonts.googleapis.com">
   }
   .readout .basis { font-size: 0.84rem; opacity: 0.62; margin-bottom: 1rem; }
   .readout .foot { font-size: 0.8rem; opacity: 0.62; margin-top: 0.5rem; line-height: 1.55; }
-  .disclaimer { font-size: 0.72rem; opacity: 0.45; margin-top: 2.4rem; line-height: 1.6; }
 </style>""", unsafe_allow_html=True)
 
 st.markdown("""<div class="mast">
@@ -200,25 +201,27 @@ if use_advanced:
         gdp_per_capita=gdp_per_capita, population_mln=population_mln,
         schooling=schooling, economy_status_developed=economy_status_developed,
     )
-    basis = 'Estimated from 20 features including health statistics'
+    basis = 'Estimated from 17 inputs including health statistics'
 else:
     prediction = predict_life_expectancy_min(
         region=region, year=year, gdp_per_capita=gdp_per_capita,
         population_mln=population_mln, schooling=schooling,
         economy_status_developed=economy_status_developed,
     )
-    basis = 'Estimated from 13 non-medical features'
+    basis = 'Estimated from 6 non-medical inputs'
 
-LO, HI = 36.0, 86.0
+band_lo, band_hi = prediction - error, prediction + error
+
 W, PAD = 700.0, 34.0
+LO = min(36.0, math.floor((band_lo - 4) / 10) * 10)
+HI = max(86.0, math.ceil((band_hi + 4) / 10) * 10)
 
 
 def x_of(v):
     return PAD + (v - LO) / (HI - LO) * (W - 2 * PAD)
 
 
-band_lo, band_hi = prediction - error, prediction + error
-ticks = [40, 50, 60, 70, 80]
+ticks = list(range(int(math.ceil(LO / 10) * 10), int(HI) + 1, 10))
 
 tick_svg = ''.join(
     f'<line x1="{x_of(t):.1f}" y1="46" x2="{x_of(t):.1f}" y2="52" '
@@ -245,10 +248,10 @@ height="22" fill="var(--who-blue)" fill-opacity="0.28"/>
 {tick_svg}
 <line x1="{x_of(prediction):.1f}" y1="10" x2="{x_of(prediction):.1f}" y2="46"
 stroke="var(--who-blue)" stroke-width="3"/>
-<text x="{x_of(band_lo):.1f}" y="13" text-anchor="middle"
+<text x="{x_of(band_lo) - 7:.1f}" y="34" text-anchor="end"
 font-family="IBM Plex Mono, monospace" font-size="10.5" fill="currentColor"
 fill-opacity="0.7">{band_lo:.1f}</text>
-<text x="{x_of(band_hi):.1f}" y="13" text-anchor="middle"
+<text x="{x_of(band_hi) + 7:.1f}" y="34" text-anchor="start"
 font-family="IBM Plex Mono, monospace" font-size="10.5" fill="currentColor"
 fill-opacity="0.7">{band_hi:.1f}</text>
 </svg>
@@ -257,7 +260,4 @@ Shaded band shows typical model error. Withholding health statistics widens it
 from &plusmn;{adv_rmse:.2f} to &plusmn;{min_rmse:.2f} years.
 </div>
 </div>
-<p class="disclaimer">
-Student project using WHO life expectancy data. Not affiliated with, endorsed by,
-or an official product of the World Health Organization.
-</p>""", unsafe_allow_html=True)
+""", unsafe_allow_html=True)

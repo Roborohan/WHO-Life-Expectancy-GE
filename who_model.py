@@ -3,53 +3,55 @@ warnings.filterwarnings('ignore')
 
 import numpy as np
 import pandas as pd
-# import matplotlib.pyplot as plt        # EDA only
-# import seaborn as sns                  # EDA only
+# import matplotlib.pyplot as plt
+# import seaborn as sns
 
 import statsmodels.api as sm
-# from statsmodels.stats.outliers_influence import variance_inflation_factor   # diagnostics only
+# from statsmodels.stats.outliers_influence import variance_inflation_factor
 
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
-# from sklearn.preprocessing import MinMaxScaler, RobustScaler                 # scaler comparison only
+# from sklearn.preprocessing import MinMaxScaler, RobustScaler
 from sklearn.linear_model import LinearRegression
 from sklearn import metrics
 
 CSV_PATH = 'Life Expectancy Data.csv'
 
 
-# ---------------------------------------------------------------- 1. Load
+# 1. EDA
+
 df = pd.read_csv(CSV_PATH)
 
-# --- EDA (not needed to build the model) ---------------------------------
 # df.head()
 # df.shape
 # df.info()
 # df.dtypes
 # df.describe()
 # df['Measles'].unique()
-#
+
 # c = df.corr(numeric_only=True)
 # mask = np.triu(np.ones(c.shape), k=1).astype(bool)
 # pairs = c.where(mask).stack()
 # pairs[pairs.abs() > 0.75].sort_values(key=abs, ascending=False)
-#
+
 # plt.figure(figsize=(12, 5))
 # sns.boxplot(data=df, x='Region', y='Life_expectancy')
 # plt.xticks(rotation=45, ha='right')
 # plt.show()
-#
+
 # obj_cols = df.select_dtypes('object').columns
 # for c in obj_cols:
 #     print(f'{c:18s} {df[c].nunique():3d}  {sorted(df[c].unique())[:8]}')
 
 
-# ---------------------------------------------------------------- 2. Encoding
+# 2. Encoding
+
 df_clean = df.copy()
 df_clean = pd.get_dummies(df_clean, columns=['Region'], drop_first=True)
 
 
-# ---------------------------------------------------- 3. Feature engineering
+# 3. Feature Engineering
+
 df_clean['Vaccination_coverage'] = df_clean[['Hepatitis_B', 'Polio',
                                              'Diphtheria', 'Measles']].mean(axis=1)
 df_clean = df_clean.drop(columns=['Hepatitis_B', 'Polio', 'Diphtheria', 'Measles'])
@@ -65,21 +67,29 @@ df_clean = df_clean.drop(columns=['Thinness_ten_nineteen_years',
 df_clean['log_GDP_per_capita'] = np.log1p(df_clean['GDP_per_capita'])
 df_clean = df_clean.drop(columns=['GDP_per_capita'])
 
-# --- transform check plots (EDA only) ------------------------------------
+df_clean['log_Incidents_HIV'] = np.log1p(df_clean['Incidents_HIV'])
+df_clean = df_clean.drop(columns=['Incidents_HIV'])
+
 # col = 'GDP_per_capita'
-# plt.scatter(df[col], df['Life_expectancy'], s=5, alpha=0.3); plt.show()
-# plt.scatter(np.log1p(df[col]), df['Life_expectancy'], s=5, alpha=0.3); plt.show()
-#
+# plt.scatter(df[col], df['Life_expectancy'], s=5, alpha=0.3)
+# plt.show()
+# plt.scatter(np.log1p(df[col]), df['Life_expectancy'], s=5, alpha=0.3)
+# plt.show()
+
 # num_cols = df.select_dtypes('number').columns.drop(
 #     ['Year', 'Economy_status_Developed', 'Economy_status_Developing'])
 # fig, axes = plt.subplots(4, 4, figsize=(16, 14))
 # for ax, col in zip(axes.flat, num_cols):
 #     ax.scatter(df[col], df['Life_expectancy'], s=4, alpha=0.3)
 #     ax.set_title(f'{col}  r={df[col].corr(df.Life_expectancy):.2f}', fontsize=9)
-# plt.tight_layout(); plt.show()
+# plt.tight_layout()
+# plt.show()
+
+# print(f'Before: {df.shape} -> After: {df_clean.shape}')
 
 
-# -------------------------------------------------------- 4. Train/test split
+# 4. Train/Test Split
+
 y = df_clean['Life_expectancy']
 X = df_clean.drop(columns=['Life_expectancy', 'Country'])
 
@@ -87,8 +97,8 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_
 X_cols = X.columns.tolist()
 
 
-# ---------------------------------------------------------------- 5. Scaling
-# --- scaler comparison (diagnostic only — all four give identical RMSE) ---
+# 5. Scaling
+
 # scalers = {'unscaled': None, 'StandardScaler': StandardScaler(),
 #            'MinMaxScaler': MinMaxScaler(), 'RobustScaler': RobustScaler()}
 # rows = []
@@ -113,19 +123,17 @@ X_train_s[X_cols] = scaler.fit_transform(X_train_s[X_cols])
 X_test_s[X_cols] = scaler.transform(X_test_s[X_cols])
 
 
-# ------------------------------------------------------------ 6. Fit models
+# 6. Fitting the Model
+
 def fit_ols(Xtr, ytr, Xte):
-    """Add the constant, fit, and return the results object plus train/test predictions."""
     Xtr = sm.add_constant(Xtr.astype(float), has_constant='add')
     Xte = sm.add_constant(Xte.astype(float), has_constant='add')[Xtr.columns]
     res = sm.OLS(ytr, Xtr).fit()
     return res, res.predict(Xtr), res.predict(Xte)
 
 
-# Advanced model — every feature, including the health data
 res_full, ptr_full, pte_full = fit_ols(X_train_s, y_train, X_test_s)
 
-# Minimal model — non-medical features only
 REGION_COLS = [c for c in X_cols if c.startswith('Region_')]
 
 MINIMAL = ['log_GDP_per_capita', 'Population_mln', 'Schooling',
@@ -133,18 +141,21 @@ MINIMAL = ['log_GDP_per_capita', 'Population_mln', 'Schooling',
 
 res_min, ptr_min, pte_min = fit_ols(X_train_s[MINIMAL], y_train, X_test_s[MINIMAL])
 
-# --- collinearity diagnostics (nothing above VIF 10 — no action taken) ----
+# design = sm.add_constant(X_train_s.astype(float), has_constant='add')
+# print('columns:', design.shape[1], ' rank:', np.linalg.matrix_rank(design.values))
+
 # Xv = sm.add_constant(X_train_s[X_cols].astype(float), has_constant='add')
 # vif = pd.Series([variance_inflation_factor(Xv.values, i) for i in range(Xv.shape[1])],
 #                 index=Xv.columns)
 # vif.drop('const').sort_values(ascending=False).round(2)
-#
+
 # c = X_train.corr()
 # pairs = c.where(np.triu(np.ones(c.shape), k=1).astype(bool)).stack()
 # pairs[pairs.abs() > 0.7].sort_values(key=abs, ascending=False)
 
 
-# ---------------------------------------------------------------- 7. Metrics
+# 7. Metrics
+
 def all_metrics(y_true, y_pred, label):
     return {
         'model': label,
@@ -159,18 +170,18 @@ model_comparison = pd.DataFrame([
     all_metrics(y_test, pte_min, 'Minimal (no health data)'),
 ])
 
-# --- log-target experiment (helps full, harms minimal — not adopted) ------
 # res_log, ptr_log, pte_log = fit_ols(X_train_s, np.log(y_train), X_test_s)
 # comparison = pd.DataFrame([
 #     all_metrics(y_test, pte_full, 'OLS on LifeExp'),
-#     all_metrics(y_test, np.exp(pte_log), 'OLS on log(LifeExp)')])
-#
+#     all_metrics(y_test, np.exp(pte_log), 'OLS on log(LifeExp)'),
+# ])
+
 # res_log_min, _, pte_log_min = fit_ols(X_train_s[MINIMAL], np.log(y_train), X_test_s[MINIMAL])
 # comparison_min = pd.DataFrame([
 #     all_metrics(y_test, pte_min, 'Minimal on LifeExp'),
-#     all_metrics(y_test, np.exp(pte_log_min), 'Minimal on log(LifeExp)')])
+#     all_metrics(y_test, np.exp(pte_log_min), 'Minimal on log(LifeExp)'),
+# ])
 
-# --- leave-one-out feature importance (no feature worth dropping) --------
 # base_rmse = metrics.root_mean_squared_error(y_test, pte_full)
 # rows = []
 # for col in X_cols:
@@ -180,7 +191,8 @@ model_comparison = pd.DataFrame([
 # drop_test = pd.DataFrame(rows, columns=['dropped', 'rmse', 'change'])
 
 
-# ------------------------------------------------------ 8. Prediction functions
+# 8. Predictions and Minimal Model
+
 VALID_REGIONS = sorted(df['Region'].unique())
 
 
@@ -190,7 +202,6 @@ def predict_life_expectancy(region, year, adult_mortality, under_five_deaths,
                             thinness_10_19, thinness_5_9,
                             gdp_per_capita, population_mln,
                             schooling, economy_status_developed):
-    """Advanced model — predicts from the full set of population statistics."""
     if region not in VALID_REGIONS:
         raise ValueError(f"Unknown region '{region}'. Expected one of {VALID_REGIONS}")
 
@@ -200,7 +211,7 @@ def predict_life_expectancy(region, year, adult_mortality, under_five_deaths,
         'Under_five_deaths': under_five_deaths,
         'Alcohol_consumption': alcohol_consumption,
         'BMI': bmi,
-        'Incidents_HIV': incidents_hiv,
+        'log_Incidents_HIV': np.log1p(incidents_hiv),
         'Population_mln': population_mln,
         'Schooling': schooling,
         'Economy_status_Developed': economy_status_developed,
@@ -219,7 +230,6 @@ def predict_life_expectancy(region, year, adult_mortality, under_five_deaths,
 
 def predict_life_expectancy_min(region, year, gdp_per_capita, population_mln,
                                 schooling, economy_status_developed):
-    """Minimal model — predicts without any health or medical data."""
     if region not in VALID_REGIONS:
         raise ValueError(f"Unknown region '{region}'. Expected one of {VALID_REGIONS}")
 
@@ -239,7 +249,6 @@ def predict_life_expectancy_min(region, year, gdp_per_capita, population_mln,
     return float(res_min.predict(X_new).iloc[0])
 
 
-# Training ranges, used by the Streamlit sliders to stop users extrapolating
 FEATURE_RANGES = {
     'Year': (2000, 2015),
     'Adult_mortality': (float(df.Adult_mortality.min()), float(df.Adult_mortality.max())),
