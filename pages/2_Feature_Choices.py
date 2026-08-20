@@ -338,11 +338,12 @@ The advanced model predicts life expectancy to within
 health data costs {rmse.iloc[1] / rmse.iloc[0]:.1f} times the error.
 </div>
 <div class="body-text">
-One caveat worth stating. Life expectancy is calculated from mortality rates to begin
-with, so adult mortality and under-five deaths are not ordinary predictors and the
-model is partly redoing that arithmetic. It is why they dominate, and why a few
-coefficients point the opposite way to their plain correlation. Treat the calculator
-as an estimator, not as evidence of cause.
+A caveat is that life expectancy is not measured directly, it is worked out from a
+country's death rates. So when we feed adult mortality and under-five deaths into the
+model, we are partly handing it the answer. That is why those two features dominate,
+and why the model scores as well as it does. It also means a few features behave oddly,
+showing the opposite effect to what you would expect on its own. The calculator gives
+good estimates, but it does not tell you what causes what.
 </div>""", unsafe_allow_html=True)
 
 
