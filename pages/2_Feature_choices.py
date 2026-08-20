@@ -173,7 +173,7 @@ judgement call.
 </div></div>
 <div class="decision">
 <div class="what">Dropped Infant_deaths, kept Under_five_deaths</div>
-<div class="why">Correlated at 0.986. Under-five is the wider measure and keeping 
+<div class="why">Correlated at 0.986. Under-five is the wider measure and keeping
 both does next to nothing.
 </div></div>
 <div class="decision">
@@ -239,8 +239,11 @@ the brief specifies. Country stays in the dataframe as a label, so predictions c
 still be traced back to the country they belong to.
 </div></div>""", unsafe_allow_html=True)
 
+st.markdown('<div class="sect">4 &middot; Heteroscedascity concerns exist but do not affect the minimal model</div>', unsafe_allow_html=True)
 
-st.markdown('<div class="sect">4 &middot; Checking it worked</div>', unsafe_allow_html=True)
+st.markdown('<div class="body-text"> We found that the residual errors for the minimal model seemed to behave heteroscedastically. We performed a Breusch-Pagan Test and found that this was statistically significant p<0.05. Upon furthe investigation, we found that only two features had this concern: `Schooling` and `log_GDP_per_capita`. We ran another model using HC3 robust standard errors but found that r^2 error only improved by 0.7%</div>', unsafe_allow_html=True)
+
+st.markdown('<div class="sect">5 &middot; Checking it worked</div>', unsafe_allow_html=True)
 
 st.markdown("""<div class="body-text">
 Anything above 10 here would mean a feature is still redundant. Nothing is, so we
@@ -282,7 +285,7 @@ the diagnostic without changing a single prediction.
 </div>""", unsafe_allow_html=True)
 
 
-st.markdown('<div class="sect">5 &middot; The two feature sets</div>', unsafe_allow_html=True)
+st.markdown('<div class="sect">6 &middot; The two feature sets</div>', unsafe_allow_html=True)
 
 adv = list(X_cols)
 health_only = [c for c in adv if c not in MINIMAL]
@@ -309,7 +312,7 @@ hardest where accuracy matters most.
 </div>""", unsafe_allow_html=True)
 
 
-st.markdown('<div class="sect">6 &middot; Summary</div>', unsafe_allow_html=True)
+st.markdown('<div class="sect">7 &middot; Summary</div>', unsafe_allow_html=True)
 
 summary = pd.DataFrame([
     ['Cleaning', 'Nothing removed', 'No missing values, duplicates or impossible values'],
