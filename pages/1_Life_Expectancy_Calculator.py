@@ -18,7 +18,7 @@ style.apply()
 
 st.markdown("""<div class="mast">
 <div class="eyebrow">Global Health Observatory &middot; Estimator</div>
-<h1>Life expectancy at birth</h1>
+<h1>Life expectancy</h1>
 <div class="sub">Modelled from WHO country statistics, 179 countries, 2000&ndash;2015</div>
 </div>""", unsafe_allow_html=True)
 
