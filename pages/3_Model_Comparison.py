@@ -402,3 +402,12 @@ not uniformly slightly worse. It is nearly as good for wealthy countries and
 considerably worse for poor ones, which means the cost of protecting the data is paid
 mostly by the populations the data is about.
 </div>""", unsafe_allow_html=True)
+
+
+st.markdown('<div style="margin-top:1.6rem;"></div>', unsafe_allow_html=True)
+
+st.page_link('pages/1_Life_Expectancy_Calculator.py',
+             label='Back to the calculator', icon=':material/arrow_back:')
+
+st.page_link('pages/2_Feature_Choices.py',
+             label='How these features were chosen', icon=':material/arrow_back:')

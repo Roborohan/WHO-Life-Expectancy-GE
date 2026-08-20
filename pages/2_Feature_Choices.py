@@ -345,8 +345,11 @@ coefficients point the opposite way to their plain correlation. Treat the calcul
 as an estimator, not as evidence of cause.
 </div>""", unsafe_allow_html=True)
 
+
+st.markdown('<div style="margin-top:1.6rem;"></div>', unsafe_allow_html=True)
+
 st.page_link('pages/3_Model_Comparison.py',
              label='How the two models compare', icon=':material/arrow_forward:')
- 
-st.page_link('Life_Expectancy_Calculator.py',
+
+st.page_link('pages/1_Life_Expectancy_Calculator.py',
              label='Back to the calculator', icon=':material/arrow_back:')
