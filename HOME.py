@@ -1,14 +1,3 @@
-"""
-Streamlit Complex Website Template
-------------------------------------
-A multi-section, styled Streamlit "website" template featuring a custom
-theme, hero section, sidebar navigation, dashboard cards, charts, a
-data table, a contact form, and a footer.
-
-Run with:
-    streamlit run app.py
-"""
-
 import streamlit as st
 import pandas as pd
 import numpy as np

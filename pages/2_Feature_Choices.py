@@ -1,7 +1,6 @@
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
-import random
 import statsmodels.api as sm
 import streamlit as st
 from plotly.subplots import make_subplots
@@ -240,9 +239,9 @@ the brief specifies. Country stays in the dataframe as a label, so predictions c
 still be traced back to the country they belong to.
 </div></div>""", unsafe_allow_html=True)
 
-st.markdown('<div class="sect">4 &middot; Heteroscedascity concerns exist but do not affect the minimal model</div>', unsafe_allow_html=True)
+st.markdown('<div class="sect">4 &middot; Heteroscedasticity concerns exist but do not affect the minimal model</div>', unsafe_allow_html=True)
 
-st.markdown('<div class="body-text"> We found that the residual errors for the minimal model seemed to behave heteroscedastically. We performed a Breusch-Pagan Test and found that this was statistically significant p<0.05. Upon furthe investigation, we found that only two features had this concern: `Schooling` and `log_GDP_per_capita`. We ran another model using HC3 robust standard errors but found that r^2 error only improved by 0.7%</div>', unsafe_allow_html=True)
+st.markdown('<div class="body-text"> We found that the residual errors for the minimal model seemed to behave heteroscedastically. We performed a Breusch-Pagan Test and found that this was statistically significant p<0.05. Upon further investigation, we found that only two features had this concern: `Schooling` and `log_GDP_per_capita`. We ran another model using HC3 robust standard errors but found that r^2 error only improved by 0.7%</div>', unsafe_allow_html=True)
 
 st.markdown('<div class="sect">5 &middot; Checking it worked</div>', unsafe_allow_html=True)
 
@@ -345,3 +344,9 @@ model is partly redoing that arithmetic. It is why they dominate, and why a few
 coefficients point the opposite way to their plain correlation. Treat the calculator
 as an estimator, not as evidence of cause.
 </div>""", unsafe_allow_html=True)
+
+st.page_link('pages/3_Model_Comparison.py',
+             label='How the two models compare', icon=':material/arrow_forward:')
+ 
+st.page_link('Life_Expectancy_Calculator.py',
+             label='Back to the calculator', icon=':material/arrow_back:')
