@@ -32,6 +32,7 @@ consent = st.radio(
     'Consent',
     ['Yes — include health statistics', 'No — economic and demographic data only'],
     label_visibility='collapsed',
+    index=1
 )
 use_advanced = consent.startswith('Yes')
 
