@@ -6,6 +6,8 @@ from plotly.subplots import make_subplots
 
 import style
 from sklearn import metrics
+from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import KFold, cross_val_score
 
 from who_model import (df, X_cols, X_test_s, X_train_s, MINIMAL, model_comparison,
                        pte_full, pte_min, res_full, res_min, y_test, y_train)
@@ -88,6 +90,24 @@ def quartile_table():
     g[['Advanced', 'Minimal']] = g[['Advanced', 'Minimal']].round(2)
     g.index.name = 'Life expectancy band'
     return g.reset_index()
+
+
+@st.cache_data
+def cv_table():
+    cv = KFold(n_splits=5, shuffle=True, random_state=42)
+    rows = []
+    for name, feats in [('Advanced', X_cols), ('Minimal', MINIMAL)]:
+        scores = -cross_val_score(LinearRegression(), X_train_s[feats], y_train,
+                                  cv=cv, scoring='neg_root_mean_squared_error')
+        rows.append({
+            'Model': name,
+            'Mean RMSE': round(scores.mean(), 3),
+            'Std': round(scores.std(), 3),
+            'Best fold': round(scores.min(), 3),
+            'Worst fold': round(scores.max(), 3),
+            'Spread': f'{(scores.max() - scores.min()) / scores.mean() * 100:.1f}%',
+        })
+    return pd.DataFrame(rows)
 
 
 @st.cache_data
@@ -236,7 +256,38 @@ model fans out, and it fans out worst at the bottom left.
 </div>""", unsafe_allow_html=True)
 
 
-st.markdown('<div class="sect">2 &middot; What the minimal model cannot see</div>',
+st.markdown('<div class="sect">2 &middot; Cross validation</div>',
+            unsafe_allow_html=True)
+
+st.markdown("""<div class="body-text">
+Every figure above rests on a single random 80/20 split. A fair objection is that we
+might simply have been lucky with which rows landed where, and a different shuffle
+could have told a different story. Five fold cross validation answers that.
+</div>
+<div class="body-text">
+It works by cutting the training data into five equal blocks, then fitting each model
+five separate times. Each round trains on four blocks and predicts the fifth, so every
+row gets held out exactly once and each model is scored five times on data it has not
+seen. What matters is not just the average but the spread: if the five scores land far
+apart, the result depends on luck, and if they cluster, it does not.
+</div>""", unsafe_allow_html=True)
+
+st.table(cv_table())
+
+st.markdown("""<div class="body-text">
+Both models cluster tightly, varying by only a few percent of their own mean. More to
+the point, the advanced model's worst fold is still far better than the minimal model's
+best one. The two ranges never come close to overlapping, so the gap between them is a
+real effect rather than an artefact of one split.
+</div>
+<div class="sect-note">
+Cross validation runs on the training data only, so the held out test set stays
+untouched and the headline figures above remain honest. The scores differ slightly from
+those figures for the same reason: they measure different data.
+</div>""", unsafe_allow_html=True)
+
+
+st.markdown('<div class="sect">3 &middot; What the minimal model cannot see</div>',
             unsafe_allow_html=True)
 
 health = [c for c in X_cols if c not in MINIMAL]
@@ -257,7 +308,7 @@ stay.
 </div>""", unsafe_allow_html=True)
 
 
-st.markdown('<div class="sect">3 &middot; Who pays for it</div>', unsafe_allow_html=True)
+st.markdown('<div class="sect">4 &middot; Who pays for it</div>', unsafe_allow_html=True)
 
 st.markdown("""<div class="body-text">
 The extra error is not shared out evenly. Splitting the test set by actual life
@@ -290,7 +341,7 @@ times the regional median, and that is the entire difference.
 </div>""", unsafe_allow_html=True)
 
 
-st.markdown('<div class="sect">4 &middot; What each model leans on</div>',
+st.markdown('<div class="sect">5 &middot; What each model leans on</div>',
             unsafe_allow_html=True)
 
 st.markdown("""<div class="body-text">
@@ -319,7 +370,7 @@ anything about the population.
 </div>""", unsafe_allow_html=True)
 
 
-st.markdown('<div class="sect">5 &middot; Compared to doing nothing</div>',
+st.markdown('<div class="sect">6 &middot; Compared to doing nothing</div>',
             unsafe_allow_html=True)
 
 st.markdown("""<div class="body-text">
@@ -337,7 +388,7 @@ sorting countries by continent and wealth.
 </div>""", unsafe_allow_html=True)
 
 
-st.markdown('<div class="sect">6 &middot; Summary</div>', unsafe_allow_html=True)
+st.markdown('<div class="sect">7 &middot; Summary</div>', unsafe_allow_html=True)
 
 st.markdown(f"""<div class="body-text">
 Consent buys about {min_rmse - adv_rmse:.1f} years of accuracy on average, and far
