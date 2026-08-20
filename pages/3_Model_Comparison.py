@@ -242,10 +242,10 @@ well past the 1.8 year benchmark we were given. The minimal model manages
 the price of not asking for health data.
 </div>
 <div class="body-text">
-R&sup2; tells a gentler story than RMSE here, {model_comparison.r2.iloc[1]:.2f} against
-{model_comparison.r2.iloc[0]:.2f}, because most of the variation in life expectancy is
-between rich and poor countries and wealth alone captures that. RMSE is the honest
-measure: it is in years, and years are what a health ministry would act on.
+Note that R&sup2; flatters the minimal model, {model_comparison.r2.iloc[1]:.2f} against
+{model_comparison.r2.iloc[0]:.2f}. Most of the variation in life expectancy is just the
+gap between rich and poor countries, and GDP alone captures that. We report RMSE first
+because it is in years, which is what a health ministry would actually plan around.
 </div>""", unsafe_allow_html=True)
 
 st.plotly_chart(actual_vs_predicted(), width='stretch')
@@ -263,13 +263,6 @@ st.markdown("""<div class="body-text">
 Every figure above rests on a single random 80/20 split. A fair objection is that we
 might simply have been lucky with which rows landed where, and a different shuffle
 could have told a different story. Five fold cross validation answers that.
-</div>
-<div class="body-text">
-It works by cutting the training data into five equal blocks, then fitting each model
-five separate times. Each round trains on four blocks and predicts the fifth, so every
-row gets held out exactly once and each model is scored five times on data it has not
-seen. What matters is not just the average but the spread: if the five scores land far
-apart, the result depends on luck, and if they cluster, it does not.
 </div>""", unsafe_allow_html=True)
 
 st.table(cv_table())
